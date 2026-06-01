@@ -2,6 +2,7 @@ package webhook
 
 import (
 	"fmt"
+	"os"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
@@ -64,9 +65,18 @@ func injectSidecar(pod *corev1.Pod, config Config, volumeCount int, resources dr
 		RestartPolicy:   ptr.To(corev1.ContainerRestartPolicyAlways),
 		Command:         []string{"hf-mount-fuse-sidecar"},
 		Args:            []string{"--tmp-dir=" + TmpVolumeMountPath, fmt.Sprintf("--expected-mounts=%d", volumeCount)},
-		Env: []corev1.EnvVar{
-			{Name: "HOME", Value: "/tmp"},
-		},
+		Env: func() []corev1.EnvVar {
+			env := []corev1.EnvVar{
+				{Name: "HOME", Value: "/tmp"},
+			}
+			if acc := os.Getenv("ACCELERATOR_MOUNT"); acc != "" {
+				env = append(env, corev1.EnvVar{Name: "ACCELERATOR_MOUNT", Value: acc})
+			}
+			if cas := os.Getenv("ACC_CAS_ENDPOINT"); cas != "" {
+				env = append(env, corev1.EnvVar{Name: "ACC_CAS_ENDPOINT", Value: cas})
+			}
+			return env
+		}(),
 		SecurityContext: &corev1.SecurityContext{
 			RunAsNonRoot:             ptr.To(true),
 			RunAsUser:                ptr.To(int64(65534)),

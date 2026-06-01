@@ -1093,13 +1093,22 @@ func (m *PodMounter) buildMountPod(name, volumeID, sourceType, sourceID, mountPa
 				ImagePullPolicy: m.imagePullPolicy,
 				Command:         []string{hfMountBinary},
 				Args:            args,
-				Env: []corev1.EnvVar{
-					{Name: "HF_CSI_SOURCE_TYPE", Value: sourceType},
-					{Name: "HF_CSI_SOURCE_ID", Value: sourceID},
-					{Name: "HF_CSI_VOLUME_ID", Value: volumeID},
-					{Name: "HF_CSI_NODE", Value: m.nodeID},
-					{Name: "HF_CSI_MOUNT_PATH", Value: mountPath},
-				},
+				Env: func() []corev1.EnvVar {
+					env := []corev1.EnvVar{
+						{Name: "HF_CSI_SOURCE_TYPE", Value: sourceType},
+						{Name: "HF_CSI_SOURCE_ID", Value: sourceID},
+						{Name: "HF_CSI_VOLUME_ID", Value: volumeID},
+						{Name: "HF_CSI_NODE", Value: m.nodeID},
+						{Name: "HF_CSI_MOUNT_PATH", Value: mountPath},
+					}
+					if acc := os.Getenv("ACCELERATOR_MOUNT"); acc != "" {
+						env = append(env, corev1.EnvVar{Name: "ACCELERATOR_MOUNT", Value: acc})
+					}
+					if cas := os.Getenv("ACC_CAS_ENDPOINT"); cas != "" {
+						env = append(env, corev1.EnvVar{Name: "ACC_CAS_ENDPOINT", Value: cas})
+					}
+					return env
+				}(),
 				SecurityContext: &corev1.SecurityContext{
 					Privileged: ptr.To(true),
 				},
