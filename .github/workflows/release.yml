@@ -12,7 +12,6 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE: ghcr.io/${{ github.repository }}
   HELM_CHART: deploy/helm/hf-csi-driver
 
 jobs:
@@ -41,6 +40,13 @@ jobs:
       always() &&
       (needs.release.result == 'success' || github.event_name == 'push')
     steps:
+      # Normalize Docker repository name to lowercase
+      - name: Lowercase image name
+        id: format
+        run: |
+          image="ghcr.io/${{ github.repository }}"
+          echo "image=${image,,}" >> "$GITHUB_OUTPUT"
+
       - name: Set release version
         id: vars
         run: |
@@ -69,8 +75,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ env.IMAGE }}:${{ steps.vars.outputs.tag }}
-            ${{ env.IMAGE }}:latest
+            ${{ steps.format.outputs.image }}:${{ steps.vars.outputs.tag }}
+            ${{ steps.format.outputs.image }}:latest
 
   helm:
     name: Publish Helm Chart
@@ -80,6 +86,13 @@ jobs:
       always() &&
       (needs.release.result == 'success' || github.event_name == 'push')
     steps:
+      # Normalize Helm registry owner to lowercase
+      - name: Lowercase owner name
+        id: format
+        run: |
+          owner="${{ github.repository_owner }}"
+          echo "owner=${owner,,}" >> "$GITHUB_OUTPUT"
+
       - name: Set release version
         id: vars
         run: |
@@ -124,4 +137,4 @@ jobs:
       - name: Package and push
         run: |
           helm package ${HELM_CHART} --version ${{ steps.vars.outputs.version }} --app-version ${{ steps.vars.outputs.version }}
-          helm push hf-csi-driver-${{ steps.vars.outputs.version }}.tgz oci://${{ env.REGISTRY }}/${{ github.repository_owner }}/charts
+          helm push hf-csi-driver-${{ steps.vars.outputs.version }}.tgz oci://${{ env.REGISTRY }}/${{ steps.format.outputs.owner }}/charts
