@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const (
@@ -97,6 +98,14 @@ func buildArgs(sourceType, sourceID, target string, opts MountOptions) ([]string
 
 // writeTokenFile atomically writes a token to a file.
 func writeTokenFile(path, token string) error {
+	// If the file already exists, and the new token is a refresh token (not a JWT starting with "ey"),
+	// skip overwriting it to protect Refresh Token Rotation (RTR) happening in FUSE.
+	if !strings.HasPrefix(token, "ey") {
+		if _, err := os.Stat(path); err == nil {
+			return nil
+		}
+	}
+
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0750); err != nil {
 		return err

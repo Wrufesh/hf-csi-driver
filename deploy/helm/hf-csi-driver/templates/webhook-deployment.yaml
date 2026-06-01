@@ -39,6 +39,10 @@ spec:
             - containerPort: 22031
               name: healthz
               protocol: TCP
+          {{- with .Values.webhook.extraEnv }}
+          env:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           readinessProbe:
             httpGet:
               path: /readyz

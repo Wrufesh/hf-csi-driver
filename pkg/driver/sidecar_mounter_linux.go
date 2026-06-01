@@ -337,6 +337,11 @@ func cleanupSidecarSocket(volumeName string) {
 // Called during republish when kubelet passes fresh secrets. hf-mount re-reads
 // the --token-file before each Hub request, so no sidecar restart is needed.
 func refreshSidecarToken(podUID, volumeName, token string) {
+	// Skip overwriting for refresh tokens to preserve FUSE Refresh Token Rotation.
+	if !strings.HasPrefix(token, "ey") {
+		return
+	}
+
 	tmpDir := sidecarEmptyDirPath(podUID)
 	hash := fmt.Sprintf("%x", sha256.Sum256([]byte(volumeName)))[:12]
 	tokenPath := filepath.Join(tmpDir, ".volumes", hash, "token")

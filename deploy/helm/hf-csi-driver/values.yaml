@@ -29,6 +29,11 @@ tolerations:
 
 priorityClassName: system-node-critical
 
+# Additional environment variables for the CSI driver daemonset
+extraEnv: []
+# - name: ACCELERATOR_MOUNT
+#   value: "1"
+
 # Sidecar injection webhook. Always deployed; volumes that want the
 # pod-based mounter can opt out per-volume with mountMode: mountpod.
 webhook:
@@ -39,6 +44,8 @@ webhook:
     pullPolicy: IfNotPresent
   replicas: 1
   port: 9443
+  # Additional environment variables for the webhook deployment
+  extraEnv: []
 
 sidecars:
   nodeDriverRegistrar:

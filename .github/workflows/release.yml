@@ -9,7 +9,7 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE: ghcr.io/huggingface/hf-csi-driver
+  IMAGE: ghcr.io/${{ github.repository }}
   HELM_CHART: deploy/helm/hf-csi-driver
 
 jobs:
@@ -90,4 +90,4 @@ jobs:
       - name: Package and push
         run: |
           helm package ${HELM_CHART} --version ${{ needs.release.outputs.version }} --app-version ${{ needs.release.outputs.version }}
-          helm push hf-csi-driver-${{ needs.release.outputs.version }}.tgz oci://${{ env.REGISTRY }}/huggingface/charts
+          helm push hf-csi-driver-${{ needs.release.outputs.version }}.tgz oci://${{ env.REGISTRY }}/${{ github.repository_owner }}/charts
