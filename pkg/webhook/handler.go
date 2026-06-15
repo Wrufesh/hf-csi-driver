@@ -18,7 +18,7 @@ import (
 
 const (
 	// CSIDriverName is the CSI driver name to detect in pod volumes.
-	CSIDriverName = "hf.csi.huggingface.co"
+	CSIDriverName = "hf.csi.accelerator"
 
 	// SidecarContainerName is the name of the injected sidecar container.
 	SidecarContainerName = "hf-mount"

@@ -26,7 +26,7 @@ const MinTerminationGracePeriodSeconds int64 = 60
 // bump happened. The value is the original number as a string ("0", "5",
 // ...), or "unset" when the field was nil. Lets operators understand why a
 // pod takes longer to terminate than the spec they wrote.
-const AnnotationOriginalGracePeriod = "hf.csi.huggingface.co/original-termination-grace-period-seconds"
+const AnnotationOriginalGracePeriod = "hf.csi.accelerator/original-termination-grace-period-seconds"
 
 // injectSidecar adds the hf-mount native sidecar container and the shared
 // emptyDir volume to the pod spec. The sidecar runs unprivileged: it receives

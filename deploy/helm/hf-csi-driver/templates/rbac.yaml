@@ -14,7 +14,7 @@ rules:
   - apiGroups: [""]
     resources: ["persistentvolumes"]
     verbs: ["get"]
-  - apiGroups: ["hf.csi.huggingface.co"]
+  - apiGroups: ["hf.csi.accelerator"]
     resources: ["hfmounts", "hfmounts/status"]
     verbs: ["get", "list", "watch", "create", "update", "delete"]
 ---

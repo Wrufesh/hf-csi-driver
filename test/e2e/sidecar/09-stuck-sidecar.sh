@@ -56,7 +56,7 @@ spec:
       medium: Memory
   - name: hf-vol
     csi:
-      driver: hf.csi.huggingface.co
+      driver: hf.csi.accelerator
       readOnly: true
       volumeAttributes:
         sourceType: repo

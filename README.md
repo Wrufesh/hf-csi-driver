@@ -40,6 +40,29 @@ helm install hf-csi deploy/helm/hf-csi-driver/ \
   --namespace kube-system
 ```
 
+#### Deploying with Accelerator Integration (Dev/Prod values)
+To deploy with the custom values for Accelerator integration:
+
+```bash
+# For Development:
+helm upgrade --install hf-csi deploy/helm/hf-csi-driver/ \
+  --namespace kube-system \
+  -f ../scheduler/acc-values-dev.yaml
+
+# For Production:
+helm upgrade --install hf-csi deploy/helm/hf-csi-driver/ \
+  --namespace kube-system \
+  -f ../scheduler/acc-values-prod.yaml
+```
+
+##### Accelerator Configuration Details
+The environment-specific values files configure the following parameters:
+* **`cacheDir`**: Maps the mounter's FUSE cache to a high-speed local SSD path on the node (e.g. `/mnt/fast-ssd-dev/hf-csi-cache` in dev, `/mnt/fast-ssd-prod/hf-csi-cache` in prod).
+* **`ACCELERATOR_MOUNT`**: Set to `"1"` under `extraEnv` and `webhook.extraEnv` to activate Accelerator FUSE cache/write optimization workflows.
+* **`ACC_CAS_ENDPOINT`**: Configures the Content Addressable Storage endpoint:
+  * Development: `https://localip:8000/api/xet-cas`
+  * Production: `https://accelerator.iiasa.ac.at/api/xet-cas`
+
 ### Plain manifests
 
 ```bash
@@ -79,7 +102,7 @@ spec:
   volumes:
     - name: gpt2
       csi:
-        driver: hf.csi.huggingface.co
+        driver: hf.csi.accelerator
         readOnly: true
         volumeAttributes:
           sourceType: repo
@@ -102,7 +125,7 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   storageClassName: ""
   csi:
-    driver: hf.csi.huggingface.co
+    driver: hf.csi.accelerator
     volumeHandle: my-bucket
     nodePublishSecretRef:
       name: hf-token
@@ -140,7 +163,7 @@ spec:
   mountOptions:
     - read-only
   csi:
-    driver: hf.csi.huggingface.co
+    driver: hf.csi.accelerator
     volumeHandle: gpt2
     nodePublishSecretRef:
       name: hf-token
@@ -223,7 +246,7 @@ the `memoryLimit` / `memoryRequest` / `cpuLimit` / `cpuRequest`
 volumes:
   - name: hf-data
     csi:
-      driver: hf.csi.huggingface.co
+      driver: hf.csi.accelerator
       volumeAttributes:
         sourceType: bucket
         sourceId: username/my-bucket

@@ -10,7 +10,7 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   storageClassName: ""
   csi:
-    driver: hf.csi.huggingface.co
+    driver: hf.csi.accelerator
     volumeHandle: my-bucket
     nodePublishSecretRef:
       name: hf-token

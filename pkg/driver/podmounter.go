@@ -24,13 +24,13 @@ import (
 
 const (
 	mountPodPrefix     = "hf-mount-"
-	labelApp           = "hf.csi.huggingface.co/app"
+	labelApp           = "hf.csi.accelerator/app"
 	labelAppValue      = "hf-mount"
-	labelVolumeID      = "hf.csi.huggingface.co/volume-id"
-	labelNode          = "hf.csi.huggingface.co/node"
-	annotSourceType    = "hf.csi.huggingface.co/source-type"
-	annotSourceID      = "hf.csi.huggingface.co/source-id"
-	annotMountPath     = "hf.csi.huggingface.co/mount-path"
+	labelVolumeID      = "hf.csi.accelerator/volume-id"
+	labelNode          = "hf.csi.accelerator/node"
+	annotSourceType    = "hf.csi.accelerator/source-type"
+	annotSourceID      = "hf.csi.accelerator/source-id"
+	annotMountPath     = "hf.csi.accelerator/mount-path"
 	mountBaseDir       = "/var/lib/hf-csi-driver/mnt"
 	podReadyTimeout    = 2 * time.Minute
 	podReadyPoll       = time.Second

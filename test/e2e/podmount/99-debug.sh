@@ -17,9 +17,9 @@ done
 echo "=== Events ==="
 kubectl get events --sort-by='.lastTimestamp'
 echo "=== Mount pods ==="
-kubectl get pods -l hf.csi.huggingface.co/app=hf-mount
+kubectl get pods -l hf.csi.accelerator/app=hf-mount
 echo "=== Mount pod logs (current and previous) ==="
-for mp in $(kubectl get pods -l hf.csi.huggingface.co/app=hf-mount -o name 2>/dev/null); do
+for mp in $(kubectl get pods -l hf.csi.accelerator/app=hf-mount -o name 2>/dev/null); do
   echo "--- $mp ---"
   kubectl describe "$mp" 2>/dev/null
   kubectl logs "$mp" --tail=200 2>/dev/null

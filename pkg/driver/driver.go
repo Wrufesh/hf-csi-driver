@@ -26,7 +26,7 @@ import (
 var sidecarVolumes sync.Map // target (string) -> struct{}
 
 const (
-	DriverName = "hf.csi.huggingface.co"
+	DriverName = "hf.csi.accelerator"
 )
 
 var Version = "dev"

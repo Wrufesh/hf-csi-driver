@@ -101,7 +101,7 @@ spec:
           image: {{ .Values.sidecars.nodeDriverRegistrar.image }}
           args:
             - --csi-address=/csi/csi.sock
-            - --kubelet-registration-path=/var/lib/kubelet/plugins/hf.csi.huggingface.co/csi.sock
+            - --kubelet-registration-path=/var/lib/kubelet/plugins/hf.csi.accelerator/csi.sock
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
@@ -130,7 +130,7 @@ spec:
             type: Directory
         - name: plugin-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/hf.csi.huggingface.co/
+            path: /var/lib/kubelet/plugins/hf.csi.accelerator/
             type: DirectoryOrCreate
         - name: registration-dir
           hostPath:

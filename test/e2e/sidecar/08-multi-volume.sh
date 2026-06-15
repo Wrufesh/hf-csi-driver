@@ -28,13 +28,13 @@ spec:
   volumes:
   - name: gpt2
     csi:
-      driver: hf.csi.huggingface.co
+      driver: hf.csi.accelerator
       volumeAttributes:
         sourceType: repo
         sourceId: openai-community/gpt2
   - name: bert
     csi:
-      driver: hf.csi.huggingface.co
+      driver: hf.csi.accelerator
       volumeAttributes:
         sourceType: repo
         sourceId: google-bert/bert-base-uncased

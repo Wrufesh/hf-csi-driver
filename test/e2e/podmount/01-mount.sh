@@ -6,9 +6,9 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 # shellcheck source=../lib.sh
 source "$SCRIPT_DIR/../lib.sh"
 
-kubectl get csidriver hf.csi.huggingface.co
-kubectl get csidriver hf.csi.huggingface.co -o jsonpath='{.spec.attachRequired}' | grep false
-kubectl get csidriver hf.csi.huggingface.co -o jsonpath='{.spec.requiresRepublish}' | grep true
+kubectl get csidriver hf.csi.accelerator
+kubectl get csidriver hf.csi.accelerator -o jsonpath='{.spec.attachRequired}' | grep false
+kubectl get csidriver hf.csi.accelerator -o jsonpath='{.spec.requiresRepublish}' | grep true
 
 kubectl create secret generic hf-token --from-literal=token='' \
   --dry-run=client -o yaml | kubectl apply -f -
@@ -24,7 +24,7 @@ spec:
   accessModes: [ReadOnlyMany]
   persistentVolumeReclaimPolicy: Retain
   csi:
-    driver: hf.csi.huggingface.co
+    driver: hf.csi.accelerator
     volumeHandle: test-gpt2
     nodePublishSecretRef:
       name: hf-token
@@ -72,7 +72,7 @@ kubectl logs test-mount | grep config.json
 kubectl logs test-mount | grep model_type
 
 log "=== Mount pods ==="
-kubectl get pods -l hf.csi.huggingface.co/app=hf-mount
+kubectl get pods -l hf.csi.accelerator/app=hf-mount
 MOUNT_PODS=$(list_mount_pods)
 [[ -n "$MOUNT_PODS" ]] || fail "no mount pods found"
 log "Found mount pods: $MOUNT_PODS"

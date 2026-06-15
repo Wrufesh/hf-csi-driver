@@ -27,7 +27,7 @@ spec:
   volumes:
   - name: vol
     csi:
-      driver: hf.csi.huggingface.co
+      driver: hf.csi.accelerator
       nodePublishSecretRef:
         name: hf-dummy-token
       volumeAttributes:

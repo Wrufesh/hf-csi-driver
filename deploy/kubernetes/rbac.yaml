@@ -6,7 +6,7 @@ rules:
   - apiGroups: [""]
     resources: ["pods"]
     verbs: ["get", "list", "watch", "create", "delete"]
-  - apiGroups: ["hf.csi.huggingface.co"]
+  - apiGroups: ["hf.csi.accelerator"]
     resources: ["hfmounts", "hfmounts/status"]
     verbs: ["get", "list", "watch", "create", "update", "delete"]
 ---

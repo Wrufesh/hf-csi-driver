@@ -23,7 +23,7 @@ spec:
   volumes:
   - name: model
     csi:
-      driver: hf.csi.huggingface.co
+      driver: hf.csi.accelerator
       volumeAttributes:
         mountMode: mountpod
         sourceType: repo

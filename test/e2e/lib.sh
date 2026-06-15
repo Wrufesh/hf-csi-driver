@@ -30,7 +30,7 @@ cluster_exists() {
 }
 
 list_mount_pods() {
-  kubectl get pods -l hf.csi.huggingface.co/app=hf-mount \
+  kubectl get pods -l hf.csi.accelerator/app=hf-mount \
     -o jsonpath='{.items[*].metadata.name}' 2>/dev/null
 }
 

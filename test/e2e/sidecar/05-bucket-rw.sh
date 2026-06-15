@@ -25,7 +25,7 @@ spec:
   volumes:
   - name: bucket
     csi:
-      driver: hf.csi.huggingface.co
+      driver: hf.csi.accelerator
       nodePublishSecretRef:
         name: hf-ci-token
       volumeAttributes:

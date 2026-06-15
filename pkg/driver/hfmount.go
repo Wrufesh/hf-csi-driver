@@ -14,7 +14,7 @@ import (
 )
 
 var hfMountGVR = schema.GroupVersionResource{
-	Group:    "hf.csi.huggingface.co",
+	Group:    "hf.csi.accelerator",
 	Version:  "v1alpha1",
 	Resource: "hfmounts",
 }
@@ -66,7 +66,7 @@ func (c *hfMountClient) create(ctx context.Context, name string, s hfMountSpec) 
 
 	obj := &unstructured.Unstructured{
 		Object: map[string]interface{}{
-			"apiVersion": "hf.csi.huggingface.co/v1alpha1",
+			"apiVersion": "hf.csi.accelerator/v1alpha1",
 			"kind":       "HFMount",
 			"metadata": map[string]interface{}{
 				"name":      name,

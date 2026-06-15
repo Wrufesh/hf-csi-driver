@@ -25,7 +25,7 @@ metadata:
   labels:
     {{- include "hf-csi-driver.labels" . | nindent 4 }}
 webhooks:
-  - name: sidecar-injector.hf.csi.huggingface.co
+  - name: sidecar-injector.hf.csi.accelerator
     admissionReviewVersions: [v1]
     sideEffects: None
     failurePolicy: Ignore
@@ -70,7 +70,7 @@ metadata:
   labels:
     {{- include "hf-csi-driver.labels" . | nindent 4 }}
 webhooks:
-  - name: sidecar-injector.hf.csi.huggingface.co
+  - name: sidecar-injector.hf.csi.accelerator
     admissionReviewVersions: [v1]
     sideEffects: None
     failurePolicy: Ignore

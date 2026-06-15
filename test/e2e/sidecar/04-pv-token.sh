@@ -22,7 +22,7 @@ spec:
   accessModes: [ReadOnlyMany]
   persistentVolumeReclaimPolicy: Retain
   csi:
-    driver: hf.csi.huggingface.co
+    driver: hf.csi.accelerator
     volumeHandle: test-gpt2-sidecar
     nodePublishSecretRef:
       name: hf-token-sidecar

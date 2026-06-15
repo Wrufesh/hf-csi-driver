@@ -8,7 +8,7 @@ source "$SCRIPT_DIR/../lib.sh"
 
 kubectl get pods -l app=hf-csi-webhook
 kubectl get mutatingwebhookconfiguration
-kubectl get csidriver hf.csi.huggingface.co
+kubectl get csidriver hf.csi.accelerator
 
 kubectl apply -f - <<EOF
 apiVersion: v1
@@ -27,7 +27,7 @@ spec:
   volumes:
   - name: model
     csi:
-      driver: hf.csi.huggingface.co
+      driver: hf.csi.accelerator
       volumeAttributes:
         sourceType: repo
         sourceId: openai-community/gpt2

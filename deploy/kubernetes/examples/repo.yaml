@@ -12,7 +12,7 @@ spec:
   mountOptions:
     - read-only
   csi:
-    driver: hf.csi.huggingface.co
+    driver: hf.csi.accelerator
     volumeHandle: my-repo
     nodePublishSecretRef:
       name: hf-token
