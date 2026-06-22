@@ -45,4 +45,4 @@ ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 ENV SSL_CERT_DIR=/etc/ssl/certs
 # END TRUST INTERNAL ACCELERATOR S3
 
-# ENTRYPOINT ["/bin/hf-csi-driver"]
+ENTRYPOINT ["/bin/hf-csi-driver"]
