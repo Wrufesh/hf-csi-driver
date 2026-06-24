@@ -1107,6 +1107,9 @@ func (m *PodMounter) buildMountPod(name, volumeID, sourceType, sourceID, mountPa
 					if cas := os.Getenv("ACC_CAS_ENDPOINT"); cas != "" {
 						env = append(env, corev1.EnvVar{Name: "ACC_CAS_ENDPOINT", Value: cas})
 					}
+					if ep := os.Getenv("ACC_ENDPOINT"); ep != "" {
+						env = append(env, corev1.EnvVar{Name: "ACC_ENDPOINT", Value: ep})
+					}
 					return env
 				}(),
 				SecurityContext: &corev1.SecurityContext{
