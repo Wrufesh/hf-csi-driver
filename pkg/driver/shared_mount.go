@@ -10,13 +10,13 @@ import (
 
 // IIASA CUSTOM: Support shared FUSE mount pods for read-only overlay mounts
 
-// IsSharedMount checks if the volume mount is ReadOnly, has the overlay flag, and the accelerator is enabled.
+// IsSharedMount checks if the volume mount is ReadOnly or has the overlay flag, and the accelerator is enabled.
 func IsSharedMount(sourceType string, opts MountOptions) bool {
 	if os.Getenv("ACCELERATOR_MOUNT") == "" {
 		return false
 	}
-	if !opts.ReadOnly {
-		return false
+	if opts.ReadOnly {
+		return true
 	}
 	for _, arg := range opts.ExtraArgs {
 		if arg == "--overlay" || arg == "overlay" {
