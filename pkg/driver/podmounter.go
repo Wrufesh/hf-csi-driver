@@ -660,6 +660,10 @@ func (m *PodMounter) rebindTargets(mountPath string) {
 
 func (m *PodMounter) Mount(sourceType, sourceID, target string, opts MountOptions) error {
 	volumeID := mountID(target)
+	// IIASA CUSTOM: Support shared FUSE mount pods for read-only overlay mounts
+	if IsSharedMount(sourceType, opts) {
+		volumeID = SharedVolumeID(sourceType, sourceID, opts)
+	}
 	mountPath := filepath.Join(mountBaseDir, volumeID)
 	podName := mountPodPrefix + volumeID
 
@@ -863,6 +867,9 @@ func (m *PodMounter) Unmount(target string) error {
 		}
 	}
 	logCRDError("delete", crdName, m.crd.delete(context.TODO(), crdName))
+
+	// IIASA CUSTOM: Support shared FUSE mount pods for read-only overlay mounts
+	CleanSharedToken(m.cacheDir, volumeID)
 
 	// Remove the source mount directory.
 	if err := os.Remove(source); err != nil && !os.IsNotExist(err) {
