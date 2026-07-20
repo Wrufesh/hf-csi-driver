@@ -15,6 +15,7 @@ hfMount:
 logVerbosity: 4
 
 cacheDir: /var/lib/hf-csi-driver/cache
+mountDir: /var/lib/hf-csi-driver/mnt
 
 updateStrategy:
   maxUnavailable: "100%"

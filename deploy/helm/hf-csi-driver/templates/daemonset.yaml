@@ -57,6 +57,8 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+            - name: HF_CSI_MOUNT_DIR
+              value: {{ .Values.mountDir | quote }}
             {{- with .Values.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -71,7 +73,7 @@ spec:
             - name: cache-dir
               mountPath: {{ .Values.cacheDir }}
             - name: mnt-dir
-              mountPath: /var/lib/hf-csi-driver/mnt
+              mountPath: {{ .Values.mountDir }}
               mountPropagation: Bidirectional
           ports:
             - containerPort: 9808
@@ -142,5 +144,5 @@ spec:
             type: DirectoryOrCreate
         - name: mnt-dir
           hostPath:
-            path: /var/lib/hf-csi-driver/mnt
+            path: {{ .Values.mountDir }}
             type: DirectoryOrCreate

@@ -31,13 +31,19 @@ const (
 	annotSourceType    = "hf.csi.accelerator/source-type"
 	annotSourceID      = "hf.csi.accelerator/source-id"
 	annotMountPath     = "hf.csi.accelerator/mount-path"
-	mountBaseDir       = "/var/lib/hf-csi-driver/mnt"
 	podReadyTimeout    = 2 * time.Minute
 	podReadyPoll       = time.Second
 	mountReadyPollPM   = 500 * time.Millisecond
 	mountTimeoutPM     = 60 * time.Second
 	podDeletionTimeout = 60 * time.Second
 )
+
+var mountBaseDir = func() string {
+	if val := os.Getenv("HF_CSI_MOUNT_DIR"); val != "" {
+		return val
+	}
+	return "/var/lib/hf-csi-driver/mnt"
+}()
 
 // refMutex is a reference-counted mutex that can be safely cleaned up
 // when no goroutine holds a reference to it.
