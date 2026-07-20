@@ -56,6 +56,27 @@ func injectSidecar(pod *corev1.Pod, config Config, volumeCount int, resources dr
 		},
 	})
 
+	// The sidecar bounds its SIGTERM shutdown (flush drain + hard-exit watchdog)
+	// from this value, so it must be the grace the kubelet actually honors, not
+	// the value the pod author requested. Enforce the minimum grace first and
+	// read the result back: a grace below the minimum would under-budget the
+	// shutdown, so the FUSE daemon would exit while the workload still has the
+	// mount busy and the in-flight I/O (and the kubelet umount) would wedge in
+	// uninterruptible D-state that SIGKILL can't clear, leaving the pod stuck
+	// Terminating. hf-mount can't read terminationGracePeriodSeconds itself (not
+	// exposed via the Downward API), so we pass the effective value explicitly.
+	// ensureTerminationGracePeriod guarantees the field is non-nil afterwards.
+	ensureTerminationGracePeriod(pod)
+	graceSeconds := *pod.Spec.TerminationGracePeriodSeconds
+
+	sidecarEnv := []corev1.EnvVar{
+		{Name: "HOME", Value: "/tmp"},
+		{Name: "HF_CSI_TERMINATION_GRACE_SECONDS", Value: fmt.Sprintf("%d", graceSeconds)},
+	}
+	if config.SidecarLogFormat != "" {
+		sidecarEnv = append(sidecarEnv, corev1.EnvVar{Name: "RUST_LOG_FORMAT", Value: config.SidecarLogFormat})
+	}
+
 	// Build the native sidecar container (init container with restartPolicy: Always).
 	// Unprivileged: receives fd from CSI driver, does NOT open /dev/fuse.
 	sidecar := corev1.Container{
@@ -66,9 +87,7 @@ func injectSidecar(pod *corev1.Pod, config Config, volumeCount int, resources dr
 		Command:         []string{"hf-mount-fuse-sidecar"},
 		Args:            []string{"--tmp-dir=" + TmpVolumeMountPath, fmt.Sprintf("--expected-mounts=%d", volumeCount)},
 		Env: func() []corev1.EnvVar {
-			env := []corev1.EnvVar{
-				{Name: "HOME", Value: "/tmp"},
-			}
+			env := sidecarEnv
 			if acc := os.Getenv("ACCELERATOR_MOUNT"); acc != "" {
 				env = append(env, corev1.EnvVar{Name: "ACCELERATOR_MOUNT", Value: acc})
 			}
@@ -115,8 +134,6 @@ func injectSidecar(pod *corev1.Pod, config Config, volumeCount int, resources dr
 	// Must be first so the FUSE daemon is running before other init containers
 	// that might access the HF volume.
 	pod.Spec.InitContainers = append([]corev1.Container{sidecar}, pod.Spec.InitContainers...)
-
-	ensureTerminationGracePeriod(pod)
 }
 
 // ensureTerminationGracePeriod raises the pod-level grace period to at least

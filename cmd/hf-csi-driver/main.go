@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/huggingface/hf-buckets-csi-driver/pkg/driver"
 	"github.com/huggingface/hf-buckets-csi-driver/pkg/webhook"
@@ -37,11 +38,15 @@ func main() {
 		mountServiceAcct = flag.String("mount-service-account", "hf-csi-driver", "Service account for mount pods")
 		mountHostNetwork = flag.Bool("mount-host-network", true, "Enable hostNetwork on mount pods")
 		namespace        = flag.String("namespace", "kube-system", "Namespace for mount pods")
+		kubeletRoot      = flag.String("kubelet-root", "/var/lib/kubelet", "Kubelet root dir; scanned by the vol_data.json reconciler")
+		fuseSweepEnabled = flag.Bool("fuse-sweep-enabled", true, "Periodically abort orphaned FUSE connections whose daemon is gone (requires hostPID)")
+		fuseSweepIntvl   = flag.Duration("fuse-sweep-interval", driver.DefaultFuseSweepInterval, "Interval for the orphaned FUSE connection sweep")
 
 		// Webhook mode flags
-		webhookPort    = flag.Int("webhook-port", 22030, "Webhook server port")
-		webhookCertDir = flag.String("webhook-cert-dir", "/etc/tls-certs", "Directory containing TLS cert and key")
-		sidecarImage   = flag.String("sidecar-image", "", "Container image for the sidecar mounter (required in webhook mode)")
+		webhookPort      = flag.Int("webhook-port", 22030, "Webhook server port")
+		webhookCertDir   = flag.String("webhook-cert-dir", "/etc/tls-certs", "Directory containing TLS cert and key")
+		sidecarImage     = flag.String("sidecar-image", "", "Container image for the sidecar mounter (required in webhook mode)")
+		sidecarLogFormat = flag.String("sidecar-log-format", "", "Optional RUST_LOG_FORMAT value for the sidecar mounter")
 
 		showVersion = flag.Bool("version", false, "Print version and exit")
 	)
@@ -56,15 +61,15 @@ func main() {
 
 	switch *mode {
 	case "node":
-		runNode(*endpoint, *nodeID, *cacheDir, *mountImage, *mountPullPolicy, *mountPullSecrets, *mountServiceAcct, *namespace, *mountHostNetwork)
+		runNode(*endpoint, *nodeID, *cacheDir, *mountImage, *mountPullPolicy, *mountPullSecrets, *mountServiceAcct, *namespace, *mountHostNetwork, *kubeletRoot, *fuseSweepEnabled, *fuseSweepIntvl)
 	case "webhook":
-		runWebhook(*webhookPort, *webhookCertDir, *sidecarImage)
+		runWebhook(*webhookPort, *webhookCertDir, *sidecarImage, *sidecarLogFormat)
 	default:
 		klog.Fatalf("Unknown mode %q (must be 'node' or 'webhook')", *mode)
 	}
 }
 
-func runNode(endpoint, nodeID, cacheDir, mountImage, mountPullPolicy, mountPullSecrets, mountServiceAcct, namespace string, mountHostNetwork bool) {
+func runNode(endpoint, nodeID, cacheDir, mountImage, mountPullPolicy, mountPullSecrets, mountServiceAcct, namespace string, mountHostNetwork bool, kubeletRoot string, fuseSweepEnabled bool, fuseSweepInterval time.Duration) {
 	if nodeID == "" {
 		hostname, err := os.Hostname()
 		if err != nil {
@@ -103,11 +108,28 @@ func runNode(endpoint, nodeID, cacheDir, mountImage, mountPullPolicy, mountPullS
 	mounter := driver.NewPodMounter(client, dynClient, namespace, nodeID, mountImage, corev1.PullPolicy(mountPullPolicy), pullSecrets, mountServiceAcct, cacheDir, mountHostNetwork)
 	drv := driver.NewDriver(endpoint, nodeID, cacheDir, mounter)
 
+	// Reconcile stuck CSI volume dirs (missing vol_data.json) left by pods
+	// deleted mid-init, which otherwise wedge kubelet's UnmountVolume forever.
+	// Ownership is verified against live pod specs (our CSI driver only).
+	reconcilerStop := make(chan struct{})
+	ownedLister := driver.NewNodeOwnedVolumeLister(client, nodeID)
+	go driver.StartVolDataReconciler(kubeletRoot, nodeID, driver.DefaultVolDataReconcileInterval, ownedLister, reconcilerStop)
+
+	// Sweep for orphaned FUSE connections (daemon zombie/gone, no NodeUnpublish
+	// in flight) and abort them, so a wedged mount cannot strand unrelated pods
+	// on the node via a node-wide sync(2) blocking on the dead superblock.
+	sweeperStop := make(chan struct{})
+	if fuseSweepEnabled {
+		go driver.StartFuseSweeper(fuseSweepInterval, sweeperStop)
+	}
+
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		sig := <-sigCh
 		klog.Infof("Received signal %v, shutting down", sig)
+		close(reconcilerStop)
+		close(sweeperStop)
 		drv.Stop()
 	}()
 
@@ -120,7 +142,7 @@ func runNode(endpoint, nodeID, cacheDir, mountImage, mountPullPolicy, mountPullS
 	}
 }
 
-func runWebhook(port int, certDir, sidecarImage string) {
+func runWebhook(port int, certDir, sidecarImage, sidecarLogFormat string) {
 	if sidecarImage == "" {
 		klog.Fatal("--sidecar-image is required in webhook mode")
 	}
@@ -143,7 +165,7 @@ func runWebhook(port int, certDir, sidecarImage string) {
 		klog.Fatalf("Failed to add readyz check: %v", err)
 	}
 
-	config := webhook.Config{SidecarImage: sidecarImage}
+	config := webhook.Config{SidecarImage: sidecarImage, SidecarLogFormat: sidecarLogFormat}
 	decoder := admission.NewDecoder(scheme)
 	injector := webhook.NewInjector(config, mgr.GetAPIReader(), decoder)
 
