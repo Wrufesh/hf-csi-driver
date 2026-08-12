@@ -197,7 +197,7 @@ func (d *Driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolume
 	// If a token is provided, write it to a file for hf-mount to read.
 	if token != "" {
 		// IIASA CUSTOM: Support shared FUSE mount pods for read-only overlay mounts
-		tokenFile := ResolveTokenFilePath(d.cacheBase, volumeID, sourceType, sourceID, opts)
+		tokenFile := ResolveTokenFilePath(d.nodeID, d.cacheBase, volumeID, sourceType, sourceID, opts)
 		if err := writeTokenFile(tokenFile, token); err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to write token file: %v", err)
 		}
@@ -221,7 +221,7 @@ func (d *Driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolume
 	}
 
 	// IIASA CUSTOM: Support shared FUSE mount pods for read-only overlay mounts
-	opts.CacheDir = ResolveCacheDir(d.cacheBase, volumeID, sourceType, sourceID, opts, volCtx[volumeCtxCacheDir])
+	opts.CacheDir = ResolveCacheDir(d.nodeID, d.cacheBase, volumeID, sourceType, sourceID, opts, volCtx[volumeCtxCacheDir])
 
 	// In sidecar mode, use fd-passing: open /dev/fuse, do the kernel mount,
 	// and hand the fd to the sidecar via a Unix socket. Otherwise, fall back

@@ -84,14 +84,15 @@ func TestSharedVolumeID(t *testing.T) {
 	opts := MountOptions{
 		Revision: "main",
 	}
+	nodeID := "test-node-1"
 
-	id1 := SharedVolumeID("bucket", "my-project", opts)
-	id2 := SharedVolumeID("bucket", "my-project", opts)
+	id1 := SharedVolumeID(nodeID, "bucket", "my-project", opts)
+	id2 := SharedVolumeID(nodeID, "bucket", "my-project", opts)
 	if id1 != id2 {
 		t.Errorf("SharedVolumeID should be deterministic: %q != %q", id1, id2)
 	}
 
-	id3 := SharedVolumeID("bucket", "another-project", opts)
+	id3 := SharedVolumeID(nodeID, "bucket", "another-project", opts)
 	if id1 == id3 {
 		t.Errorf("SharedVolumeID should differ for different source IDs: %q == %q", id1, id3)
 	}

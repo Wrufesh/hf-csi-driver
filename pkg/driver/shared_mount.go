@@ -27,32 +27,32 @@ func IsSharedMount(sourceType string, opts MountOptions) bool {
 }
 
 // SharedVolumeID generates a deterministic shared volume ID for read-only overlay mounts.
-func SharedVolumeID(sourceType, sourceID string, opts MountOptions) string {
-	key := fmt.Sprintf("%s-%s", sourceType, sourceID)
+func SharedVolumeID(nodeID, sourceType, sourceID string, opts MountOptions) string {
+	key := fmt.Sprintf("%s-%s-%s", nodeID, sourceType, sourceID)
 	if sourceType == "repo" && opts.Revision != "" {
-		key = fmt.Sprintf("%s-%s-%s", sourceType, sourceID, opts.Revision)
+		key = fmt.Sprintf("%s-%s-%s-%s", nodeID, sourceType, sourceID, opts.Revision)
 	}
 	h := sha256.Sum256([]byte(key))
-	return fmt.Sprintf("shared-%x", h[:6])
+	return fmt.Sprintf("shared-%s-%x", nodeID, h[:6])
 }
 
 // ResolveTokenFilePath returns the correct token file path, using the shared volume ID if applicable.
-func ResolveTokenFilePath(cacheBase, volumeID, sourceType, sourceID string, opts MountOptions) string {
+func ResolveTokenFilePath(nodeID, cacheBase, volumeID, sourceType, sourceID string, opts MountOptions) string {
 	tokVolID := volumeID
 	if IsSharedMount(sourceType, opts) {
-		tokVolID = SharedVolumeID(sourceType, sourceID, opts)
+		tokVolID = SharedVolumeID(nodeID, sourceType, sourceID, opts)
 	}
 	return tokenFilePath(cacheBase, tokVolID)
 }
 
 // ResolveCacheDir returns the correct cache directory, using the shared volume ID if applicable.
-func ResolveCacheDir(cacheBase, volumeID, sourceType, sourceID string, opts MountOptions, customCacheDir string) string {
+func ResolveCacheDir(nodeID, cacheBase, volumeID, sourceType, sourceID string, opts MountOptions, customCacheDir string) string {
 	if customCacheDir != "" {
 		return customCacheDir
 	}
 	cacheVolID := volumeID
 	if IsSharedMount(sourceType, opts) {
-		cacheVolID = SharedVolumeID(sourceType, sourceID, opts)
+		cacheVolID = SharedVolumeID(nodeID, sourceType, sourceID, opts)
 	}
 	return filepath.Join(cacheBase, sanitizeVolumeID(cacheVolID))
 }

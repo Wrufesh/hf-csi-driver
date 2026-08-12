@@ -668,7 +668,7 @@ func (m *PodMounter) Mount(sourceType, sourceID, target string, opts MountOption
 	volumeID := mountID(target)
 	// IIASA CUSTOM: Support shared FUSE mount pods for read-only overlay mounts
 	if IsSharedMount(sourceType, opts) {
-		volumeID = SharedVolumeID(sourceType, sourceID, opts)
+		volumeID = SharedVolumeID(m.nodeID, sourceType, sourceID, opts)
 	}
 	mountPath := filepath.Join(mountBaseDir, volumeID)
 	podName := mountPodPrefix + volumeID
