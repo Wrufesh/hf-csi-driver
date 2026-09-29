@@ -1063,7 +1063,7 @@ func (m *PodMounter) recoverPod(ctx context.Context, pod *corev1.Pod) {
 func (m *PodMounter) buildMountPod(name, volumeID, sourceType, sourceID, mountPath string, args []string, resources MountResources) *corev1.Pod {
 	bidirectional := corev1.MountPropagationBidirectional
 
-	return &corev1.Pod{
+	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: m.namespace,
@@ -1163,6 +1163,10 @@ func (m *PodMounter) buildMountPod(name, volumeID, sourceType, sourceID, mountPa
 			},
 		},
 	}
+	if os.Getenv("ACCELERATOR_MOUNT") != "" {
+		pod.Spec.PriorityClassName = "system-node-critical"
+	}
+	return pod
 }
 
 func (m *PodMounter) waitForPodRunning(ctx context.Context, name string) error {
