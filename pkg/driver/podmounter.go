@@ -247,6 +247,12 @@ func (m *PodMounter) runCleanupScan() {
 			continue
 		}
 		if !mounted && !corrupted {
+			// IIASA CUSTOM: overlay mounts leave job writes in the source dir.
+			if os.Getenv("ACCELERATOR_MOUNT") != "" && listErr == nil {
+				if _, exists := podsByName[podName]; !exists {
+					m.removeInactiveSource(mountPath)
+				}
+			}
 			continue
 		}
 
@@ -530,6 +536,36 @@ func (m *PodMounter) cleanupSource(mountPath string) {
 	if err := os.Remove(mountPath); err != nil && !os.IsNotExist(err) {
 		klog.V(4).Infof("Remove source dir %s: %v", mountPath, err)
 	}
+}
+
+// IIASA CUSTOM: In overlay mode the source dir holds hf-mount's local writes, so the
+// os.Remove at teardown never clears it. Delete it once no mount, mount pod or HFMount
+// CRD references it. Runs under the source lock, which Mount also takes before
+// creating the CRD, so a new mount of the same volume cannot start mid-delete.
+func (m *PodMounter) removeInactiveSource(mountPath string) {
+	lk := m.acquireSourceLock(mountPath)
+	lk.Lock()
+	defer func() {
+		lk.Unlock()
+		m.releaseSourceLock(mountPath, lk)
+	}()
+
+	ctx := context.TODO()
+	volumeID := mountIDFromSource(mountPath)
+	if mounted, err := m.checker.IsMountPoint(mountPath); err != nil || mounted {
+		return
+	}
+	if _, err := m.client.CoreV1().Pods(m.namespace).Get(ctx, mountPodPrefix+volumeID, metav1.GetOptions{}); !errors.IsNotFound(err) {
+		return
+	}
+	if _, err := m.crd.get(ctx, hfMountName(volumeID)); !errors.IsNotFound(err) {
+		return
+	}
+	if err := os.RemoveAll(mountPath); err != nil {
+		klog.Warningf("Periodic cleanup: failed to remove inactive source %s: %v", mountPath, err)
+		return
+	}
+	klog.Infof("Periodic cleanup: removed inactive source %s", mountPath)
 }
 
 // tryHealSource attempts to heal a source mount that still has active bind
