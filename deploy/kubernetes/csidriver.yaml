@@ -6,3 +6,6 @@ spec:
   attachRequired: false
   podInfoOnMount: true
   requiresRepublish: true
+  volumeLifecycleModes:
+    - Ephemeral
+    - Persistent

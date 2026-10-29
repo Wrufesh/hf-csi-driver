@@ -56,6 +56,9 @@ spec:
             - name: tls-certs
               mountPath: /etc/tls-certs
               readOnly: true
+            {{- with .Values.webhook.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           resources:
             requests:
               cpu: 50m
@@ -64,3 +67,6 @@ spec:
         - name: tls-certs
           secret:
             secretName: {{ include "hf-csi-driver.fullname" . }}-webhook-tls
+        {{- with .Values.webhook.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}

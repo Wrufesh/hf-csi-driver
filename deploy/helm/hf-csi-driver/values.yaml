@@ -48,6 +48,17 @@ priorityClassName: system-node-critical
 
 # Additional environment variables for the CSI driver daemonset
 extraEnv: []
+
+extraVolumes: []
+# - name: cluster-ca-certs
+#   configMap:
+#     name: cluster-ca-certs
+#     optional: true
+
+extraVolumeMounts: []
+# - name: cluster-ca-certs
+#   mountPath: /usr/local/share/ca-certificates
+#   readOnly: true
 # - name: ACCELERATOR_MOUNT
 #   value: "1"
 
@@ -63,6 +74,9 @@ webhook:
   port: 9443
   # Additional environment variables for the webhook deployment
   extraEnv: []
+
+  extraVolumes: []
+  extraVolumeMounts: []
 
 sidecars:
   nodeDriverRegistrar:

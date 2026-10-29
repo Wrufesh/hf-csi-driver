@@ -81,6 +81,9 @@ spec:
             - name: mnt-dir
               mountPath: {{ .Values.mountDir }}
               mountPropagation: Bidirectional
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           ports:
             - containerPort: 9808
               name: healthz
@@ -152,3 +155,6 @@ spec:
           hostPath:
             path: {{ .Values.mountDir }}
             type: DirectoryOrCreate
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
