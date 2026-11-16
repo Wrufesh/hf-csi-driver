@@ -8,13 +8,19 @@ hfMount:
   image:
     repository: ghcr.io/huggingface/hf-mount-fuse
     # Default for source installs; overwritten at release time with the latest hf-mount release tag.
-    # v0.7.2 carries the inval_inode runtime-deadlock fix (huggingface/hf-mount#196,
-    # fixes #195) — the root cause of the stranded-pod incident this PR's node-layer
-    # sweep contains. See issue #48.
-    tag: v0.7.2
+    # v0.13.6 uploads xorbs through presigned S3 URLs (xet-core v1.8.0 Direct-S3).
+    tag: v0.13.6
     pullPolicy: IfNotPresent
   hostNetwork: true
   logFormat: ""
+  # Default memory request for the hf-mount container (mount pod or injected
+  # sidecar) when the volume sets no memoryRequest. Writable volumes reserve
+  # what the write pipeline can hold under a stalled upload (~1.8GiB measured);
+  # read-only volumes, including all repo sources, never touch it. Lower
+  # defaultMemoryRequest cluster-wide if the reservation does not fit your
+  # nodes; a request never caps usage.
+  defaultMemoryRequest: 2Gi
+  defaultMemoryRequestReadOnly: 128Mi
 
 logVerbosity: 4
 
@@ -37,6 +43,15 @@ hostPID: true
 fuseSweep:
   enabled: true
   interval: 60s
+
+# Startup taint (cf. ebs.csi.aws.com/agent-not-ready). Node bootstrap must apply
+# `<key>:NoSchedule` at registration (kubelet `registerWithTaints` or the node
+# provisioner's template); the plugin removes it once kubelet lists the driver in
+# the node's CSINode. Without it, pods scheduled onto a fresh node fail their HF
+# volume mounts for the ~35-80s the driver takes to register.
+startupTaint:
+  enabled: false
+  key: hf.csi.huggingface.co/agent-not-ready
 
 nodeSelector:
   kubernetes.io/os: linux
@@ -63,6 +78,11 @@ webhook:
   port: 9443
   # Additional environment variables for the webhook deployment
   extraEnv: []
+  # Webhook-scoped scheduling; the top-level nodeSelector/tolerations only
+  # apply to the node plugin DaemonSet. Use these to keep the webhook off
+  # workload nodes (it blocks autoscaler node removal as a single-replica pod).
+  nodeSelector: {}
+  tolerations: []
 
 sidecars:
   nodeDriverRegistrar:

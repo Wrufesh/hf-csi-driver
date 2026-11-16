@@ -18,6 +18,14 @@ spec:
         {{- include "hf-csi-driver.labels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ include "hf-csi-driver.fullname" . }}
+      {{- with .Values.webhook.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.webhook.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -31,6 +39,8 @@ spec:
             - --webhook-port={{ .Values.webhook.port }}
             - --webhook-cert-dir=/etc/tls-certs
             - --sidecar-image={{ .Values.hfMount.image.repository }}:{{ .Values.hfMount.image.tag }}
+            - --default-memory-request={{ .Values.hfMount.defaultMemoryRequest }}
+            - --default-memory-request-read-only={{ .Values.hfMount.defaultMemoryRequestReadOnly }}
             {{- if .Values.hfMount.logFormat }}
             - --sidecar-log-format={{ .Values.hfMount.logFormat }}
             {{- end }}

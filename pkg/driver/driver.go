@@ -38,14 +38,15 @@ type Driver struct {
 	csi.UnimplementedControllerServer
 	csi.UnimplementedNodeServer
 
-	endpoint      string
-	nodeID        string
-	cacheBase     string
-	srv           *grpc.Server
-	mounter       Mounter
-	fuseUnmountFn func(string) error
-	stopCh        chan struct{}
-	stopOnce      sync.Once
+	endpoint            string
+	nodeID              string
+	cacheBase           string
+	srv                 *grpc.Server
+	mounter             Mounter
+	fuseUnmountFn       func(string) error
+	sidecarMountStateFn func(string) (int, bool, error)
+	stopCh              chan struct{}
+	stopOnce            sync.Once
 }
 
 func NewDriver(endpoint, nodeID, cacheBase string, mounter Mounter) *Driver {
@@ -75,9 +76,8 @@ func (d *Driver) Run() error {
 		return fmt.Errorf("failed to create socket directory: %w", err)
 	}
 
-	// Start the pod watcher early. client-go's reflector retries the initial
-	// list internally on transient errors, so it does not block startup if
-	// the pod network is not yet ready.
+	// Start the pod watcher early. Start returns before the informer cache has
+	// synced, so an unreachable API server does not delay opening the socket.
 	d.mounter.Start(d.stopCh)
 
 	// Run mount recovery asynchronously. On a freshly-provisioned node the

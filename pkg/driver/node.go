@@ -95,22 +95,27 @@ func (d *Driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolume
 	willUseSidecar := mode == MountModeSidecar
 
 	// Check existing mount state.
-	mounted, err := d.mounter.IsMountPoint(target)
+	var mounted bool
+	var err error
+	var sidecarMinor int
+	if willUseSidecar {
+		// Stat can block indefinitely before the sidecar receives the FUSE fd.
+		// Inspect mountinfo instead, including after a node-plugin restart.
+		mountState := d.sidecarMountStateFn
+		if mountState == nil {
+			mountState = sidecarMountState
+		}
+		sidecarMinor, mounted, err = mountState(target)
+	} else {
+		mounted, err = d.mounter.IsMountPoint(target)
+	}
 	if err != nil {
-		if mount.IsCorruptedMnt(err) {
-			if willUseSidecar {
-				// In sidecar mode, the kernel FUSE mount intentionally has no
-				// daemon until the sidecar connects. Treat as already mounted
-				// (republish path will check health via error file).
-				mounted = true
-			} else {
-				klog.Warningf("Stale mount detected at %s, force unmounting", target)
-				if umountErr := d.mounter.Unmount(target); umountErr != nil {
-					return nil, status.Errorf(codes.Internal, "failed to clean stale mount at %s: %v", target, umountErr)
-				}
-				mounted = false
-			}
-		} else if !os.IsNotExist(err) {
+		if !willUseSidecar && mount.IsCorruptedMnt(err) {
+			// Leave the dead mount in place: the mountpod path stacks a
+			// fresh bind over it (propagation rationale on stackBind).
+			klog.Warningf("Stale mount detected at %s; will stack a fresh bind over it", target)
+			mounted = false
+		} else if willUseSidecar || !os.IsNotExist(err) {
 			return nil, status.Errorf(codes.Internal, "failed to check mount point %s: %v", target, err)
 		}
 	}
@@ -124,6 +129,11 @@ func (d *Driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolume
 		// fires this branch periodically, re-seeding the entry after a restart.
 		if willUseSidecar {
 			sidecarVolumes.Store(target, struct{}{})
+			// Let the current listener finish before attempting recovery. Its
+			// cleanup must not unlink a replacement listener's socket/symlink.
+			if sidecarHandoffPending(sidecarMinor) {
+				return &csi.NodePublishVolumeResponse{}, nil
+			}
 		}
 		// Republish: kubelet calls us with fresh secrets.
 		if token != "" {
@@ -160,9 +170,12 @@ func (d *Driver) NodePublishVolume(_ context.Context, req *csi.NodePublishVolume
 		return &csi.NodePublishVolumeResponse{}, nil
 	}
 
-	// Create target directory.
+	// Create target directory. Tolerate failure on an existing (possibly
+	// dead) mountpoint — the stale-mount republish path above deliberately
+	// leaves the corpse in place for the mounter to stack a fresh bind over
+	// (see stackBind), and MkdirAll cannot succeed on it.
 	if err := os.MkdirAll(target, 0750); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to create target directory %s: %v", target, err)
+		logMkdirOnMountpoint(target, err)
 	}
 
 	// Extract volume mount group (fsGroup) from the CSI request.

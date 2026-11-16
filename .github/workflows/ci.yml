@@ -5,59 +5,71 @@ on:
   push:
     branches: [main]
 
+permissions: {}
+
 jobs:
   lint:
+    permissions:
+      contents: read
     name: Lint
     runs-on:
       group: aws-general-8-plus
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
-      - uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee
+      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a
         with:
           version: latest
 
   test:
+    permissions:
+      contents: read
     name: Test
     runs-on:
       group: aws-general-8-plus
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
       - run: go test -race -v ./...
 
   build:
+    permissions:
+      contents: read
     name: Build
     runs-on:
       group: aws-general-8-plus
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
       - run: CGO_ENABLED=0 GOOS=linux go build -o /dev/null ./cmd/hf-csi-driver/
 
   helm-lint:
+    permissions:
+      contents: read
     name: Helm Lint
     runs-on:
       group: aws-general-8-plus
     steps:
-      - uses: actions/checkout@v7
-      - uses: azure/setup-helm@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
       - run: |
           helm lint deploy/helm/hf-csi-driver/
           helm lint deploy/helm/hf-csi-driver/ --set webhook.enabled=true
 
   build-hf-mount:
+    permissions:
+      contents: read
     name: Build hf-mount image
     runs-on:
       group: aws-general-8-plus
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Resolve hf-mount ref
         id: ref
         run: |
@@ -82,7 +94,7 @@ jobs:
       - run: |
           docker build -t hf-mount-fuse:v0.3.1 /tmp/hf-mount
           docker save hf-mount-fuse:v0.3.1 -o /tmp/hf-mount-fuse.tar
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: hf-mount-fuse-image
           path: /tmp/hf-mount-fuse.tar
@@ -90,6 +102,8 @@ jobs:
           compression-level: 0
 
   e2e-podmount:
+    permissions:
+      contents: read
     name: E2E (podmount)
     needs: [build, helm-lint, build-hf-mount]
     runs-on:
@@ -100,8 +114,8 @@ jobs:
       DRIVER_IMAGE: hf-csi-driver:test
       HF_MOUNT_IMAGE: hf-mount-fuse:v0.3.1
     steps:
-      - uses: actions/checkout@v7
-      - uses: azure/setup-helm@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
 
       - name: Install kind
         run: |
@@ -110,7 +124,7 @@ jobs:
           chmod +x "$HOME/bin/kind"
           echo "$HOME/bin" >> "$GITHUB_PATH"
 
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: hf-mount-fuse-image
           path: /tmp
@@ -119,6 +133,11 @@ jobs:
 
       - name: Setup cluster (podmount)
         run: test/e2e/setup-cluster.sh podmount
+
+      - name: Start mount pod log collector
+        run: |
+          mkdir -p /tmp/hf-mount-logs
+          nohup test/e2e/collect-mount-logs.sh /tmp/hf-mount-logs >/tmp/hf-mount-logs/collector.out 2>&1 &
 
       - name: 01-mount               # public repo, PV+PVC mount + verify mount pod / HFMount CRD
         run: test/e2e/podmount/01-mount.sh
@@ -147,18 +166,26 @@ jobs:
       - name: 09-bucket-rw
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: test/e2e/podmount/09-bucket-rw.sh
+        run: |
+          # Mask the token to prevent accidental exposure in logs
+          echo "::add-mask::$HF_TOKEN"
+          test/e2e/podmount/09-bucket-rw.sh
 
       - name: 10-fsgroup
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: test/e2e/podmount/10-fsgroup.sh
+        run: |
+          # Mask the token to prevent accidental exposure in logs
+          echo "::add-mask::$HF_TOKEN"
+          test/e2e/podmount/10-fsgroup.sh
 
       - name: Debug on failure
         if: failure()
         run: test/e2e/podmount/99-debug.sh
 
   e2e-sidecar:
+    permissions:
+      contents: read
     name: E2E (sidecar)
     needs: [build, helm-lint, build-hf-mount]
     runs-on:
@@ -169,8 +196,8 @@ jobs:
       DRIVER_IMAGE: hf-csi-driver:test
       HF_MOUNT_IMAGE: hf-mount-fuse:v0.3.1
     steps:
-      - uses: actions/checkout@v7
-      - uses: azure/setup-helm@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
 
       - name: Install kind
         run: |
@@ -179,7 +206,7 @@ jobs:
           chmod +x "$HOME/bin/kind"
           echo "$HOME/bin" >> "$GITHUB_PATH"
 
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: hf-mount-fuse-image
           path: /tmp
@@ -204,12 +231,18 @@ jobs:
       - name: 05-bucket-rw
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: test/e2e/sidecar/05-bucket-rw.sh
+        run: |
+          # Mask the token to prevent accidental exposure in logs
+          echo "::add-mask::$HF_TOKEN"
+          test/e2e/sidecar/05-bucket-rw.sh
 
       - name: 06-fsgroup
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: test/e2e/sidecar/06-fsgroup.sh
+        run: |
+          # Mask the token to prevent accidental exposure in logs
+          echo "::add-mask::$HF_TOKEN"
+          test/e2e/sidecar/06-fsgroup.sh
 
       - name: 07-token-perms
         run: test/e2e/sidecar/07-token-perms.sh
